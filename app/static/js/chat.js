@@ -76,6 +76,8 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   async function loadMessageHistory() {
+    setLoading(true);
+
     try {
       const conversation = await getCurrentConversation();
       currentConversationId = conversation.id;
@@ -90,13 +92,16 @@ document.addEventListener("DOMContentLoaded", function () {
       displaySavedMessages(data.messages);
     } catch (error) {
       addMessage("Unable to load previous messages.", "error");
+    } finally {
+      setLoading(false);
+      messageInput.focus();
     }
   }
 
   chatForm.addEventListener("submit", async function (event) {
     event.preventDefault();
 
-    if (isRequestRunning) {
+    if (isRequestRunning || !currentConversationId) {
       return;
     }
 
