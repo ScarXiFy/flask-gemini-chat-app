@@ -72,7 +72,7 @@ document.addEventListener("DOMContentLoaded", function () {
       const button = document.createElement("button");
       button.className = "conversation-item";
       button.type = "button";
-      button.textContent = `${conversation.title} #${conversation.id}`;
+      button.textContent = conversation.title;
 
       if (conversation.id === activeConversationId) {
         button.classList.add("active");
@@ -84,6 +84,21 @@ document.addEventListener("DOMContentLoaded", function () {
 
       conversationList.appendChild(button);
     });
+  }
+
+  function updateConversationInSidebar(updatedConversation) {
+    conversations = conversations.map(function (conversation) {
+      if (conversation.id === updatedConversation.id) {
+        return {
+          ...conversation,
+          title: updatedConversation.title,
+        };
+      }
+
+      return conversation;
+    });
+
+    renderConversations();
   }
 
   function displaySavedMessages(messages) {
@@ -247,6 +262,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
       removeMessage(loadingMessage);
       addMessage(data.response, "assistant");
+      updateConversationInSidebar(data.conversation);
       await fetchConversations();
       renderConversations();
     } catch (error) {

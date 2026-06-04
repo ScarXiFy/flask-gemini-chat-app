@@ -83,6 +83,56 @@ def get_conversations():
         connection.close()
 
 
+def get_conversation(conversation_id):
+    """Load one conversation by id."""
+    connection = get_database_connection()
+    connection.row_factory = sqlite3.Row
+
+    try:
+        row = connection.execute(
+            """
+            SELECT id, title, created_at, updated_at
+            FROM conversations
+            WHERE id = ?
+            """,
+            (conversation_id,),
+        ).fetchone()
+
+        return dict(row) if row else None
+    finally:
+        connection.close()
+
+
+def update_conversation_title(conversation_id, title):
+    """Update a conversation title and return the updated row."""
+    connection = get_database_connection()
+    connection.row_factory = sqlite3.Row
+
+    try:
+        connection.execute(
+            """
+            UPDATE conversations
+            SET title = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (title, conversation_id),
+        )
+        connection.commit()
+
+        row = connection.execute(
+            """
+            SELECT id, title, created_at, updated_at
+            FROM conversations
+            WHERE id = ?
+            """,
+            (conversation_id,),
+        ).fetchone()
+
+        return dict(row)
+    finally:
+        connection.close()
+
+
 def get_messages(conversation_id):
     """Load messages for one conversation from oldest to newest."""
     connection = get_database_connection()
