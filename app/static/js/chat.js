@@ -1,12 +1,18 @@
 document.addEventListener("DOMContentLoaded", function () {
   const chatForm = document.getElementById("chat-form");
   const chatWindow = document.getElementById("chat-window");
+  const conversationList = document.getElementById("conversation-list");
   const messageInput = document.getElementById("message");
+  const newChatButton = document.getElementById("new-chat-button");
   const sendButton = document.getElementById("send-button");
+
+  let activeConversationId = null;
+  let conversations = [];
   let isRequestRunning = false;
-  let currentConversationId = null;
 
   function addMessage(text, sender) {
+    removeEmptyState();
+
     const message = document.createElement("div");
     message.className = `message message-${sender}`;
 
@@ -16,7 +22,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     message.appendChild(paragraph);
     chatWindow.appendChild(message);
-    chatWindow.scrollTop = chatWindow.scrollHeight;
+    scrollToNewestMessage();
 
     return message;
   }
@@ -38,9 +44,51 @@ document.addEventListener("DOMContentLoaded", function () {
     chatWindow.innerHTML = "";
   }
 
+  function showEmptyState() {
+    clearMessages();
+
+    const emptyState = document.createElement("div");
+    emptyState.className = "empty-state";
+    emptyState.textContent = "Start a conversation with Gemini.";
+    chatWindow.appendChild(emptyState);
+  }
+
+  function removeEmptyState() {
+    const emptyState = chatWindow.querySelector(".empty-state");
+
+    if (emptyState) {
+      emptyState.remove();
+    }
+  }
+
+  function scrollToNewestMessage() {
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+  }
+
+  function renderConversations() {
+    conversationList.innerHTML = "";
+
+    conversations.forEach(function (conversation) {
+      const button = document.createElement("button");
+      button.className = "conversation-item";
+      button.type = "button";
+      button.textContent = `${conversation.title} #${conversation.id}`;
+
+      if (conversation.id === activeConversationId) {
+        button.classList.add("active");
+      }
+
+      button.addEventListener("click", function () {
+        switchConversation(conversation.id);
+      });
+
+      conversationList.appendChild(button);
+    });
+  }
+
   function displaySavedMessages(messages) {
     if (!messages.length) {
-      chatWindow.scrollTop = chatWindow.scrollHeight;
+      showEmptyState();
       return;
     }
 
@@ -49,9 +97,11 @@ document.addEventListener("DOMContentLoaded", function () {
     messages.forEach(function (message) {
       addMessage(message.content, message.role);
     });
+
+    scrollToNewestMessage();
   }
 
-  async function getCurrentConversation() {
+  async function fetchConversations() {
     const response = await fetch("/api/conversations");
     const data = await response.json();
 
@@ -59,37 +109,97 @@ document.addEventListener("DOMContentLoaded", function () {
       throw new Error("Unable to load conversations.");
     }
 
-    if (data.conversations.length) {
-      return data.conversations[0];
-    }
+    conversations = data.conversations;
+  }
 
-    const newResponse = await fetch("/api/conversations/new", {
+  async function createConversation() {
+    const response = await fetch("/api/conversations/new", {
       method: "POST",
     });
-    const newData = await newResponse.json();
+    const data = await response.json();
 
-    if (!newResponse.ok || !newData.success) {
+    if (!response.ok || !data.success) {
       throw new Error("Unable to create a conversation.");
     }
 
-    return newData.conversation;
+    return data.conversation;
   }
 
-  async function loadMessageHistory() {
+  async function loadMessagesForActiveConversation() {
+    const response = await fetch(`/api/messages?conversation_id=${activeConversationId}`);
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || "Message history failed to load.");
+    }
+
+    displaySavedMessages(data.messages);
+  }
+
+  async function switchConversation(conversationId) {
+    if (isRequestRunning || conversationId === activeConversationId) {
+      return;
+    }
+
+    activeConversationId = conversationId;
+    localStorage.setItem("activeConversationId", activeConversationId);
+    renderConversations();
     setLoading(true);
 
     try {
-      const conversation = await getCurrentConversation();
-      currentConversationId = conversation.id;
+      await loadMessagesForActiveConversation();
+    } catch (error) {
+      addMessage("Unable to load previous messages.", "error");
+    } finally {
+      setLoading(false);
+      messageInput.focus();
+    }
+  }
 
-      const response = await fetch(`/api/messages?conversation_id=${currentConversationId}`);
-      const data = await response.json();
+  async function startNewConversation() {
+    if (isRequestRunning) {
+      return;
+    }
 
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || "Message history failed to load.");
+    setLoading(true);
+
+    try {
+      const conversation = await createConversation();
+      conversations.unshift(conversation);
+      activeConversationId = conversation.id;
+      localStorage.setItem("activeConversationId", activeConversationId);
+      renderConversations();
+      showEmptyState();
+    } catch (error) {
+      addMessage("Unable to start a new chat. Please try again.", "error");
+    } finally {
+      setLoading(false);
+      messageInput.focus();
+    }
+  }
+
+  async function prepareConversations() {
+    setLoading(true);
+
+    try {
+      await fetchConversations();
+
+      if (!conversations.length) {
+        conversations.push(await createConversation());
       }
 
-      displaySavedMessages(data.messages);
+      const savedConversationId = Number(localStorage.getItem("activeConversationId"));
+      const savedConversation = conversations.find(function (conversation) {
+        return conversation.id === savedConversationId;
+      });
+
+      activeConversationId = savedConversation
+        ? savedConversation.id
+        : conversations[0].id;
+
+      localStorage.setItem("activeConversationId", activeConversationId);
+      renderConversations();
+      await loadMessagesForActiveConversation();
     } catch (error) {
       addMessage("Unable to load previous messages.", "error");
     } finally {
@@ -101,7 +211,7 @@ document.addEventListener("DOMContentLoaded", function () {
   chatForm.addEventListener("submit", async function (event) {
     event.preventDefault();
 
-    if (isRequestRunning || !currentConversationId) {
+    if (isRequestRunning || !activeConversationId) {
       return;
     }
 
@@ -124,7 +234,7 @@ document.addEventListener("DOMContentLoaded", function () {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          conversation_id: currentConversationId,
+          conversation_id: activeConversationId,
           message: userMessage,
         }),
       });
@@ -137,6 +247,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
       removeMessage(loadingMessage);
       addMessage(data.response, "assistant");
+      await fetchConversations();
+      renderConversations();
     } catch (error) {
       removeMessage(loadingMessage);
       addMessage("Unable to contact Gemini. Please try again.", "error");
@@ -146,5 +258,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   });
 
-  loadMessageHistory();
+  newChatButton.addEventListener("click", startNewConversation);
+
+  prepareConversations();
 });
