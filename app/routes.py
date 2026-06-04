@@ -1,6 +1,12 @@
 from flask import Blueprint, jsonify, request, render_template
 
-from app.database import save_message
+from app.database import (
+    conversation_exists,
+    create_conversation,
+    get_conversations,
+    get_messages,
+    save_message,
+)
 from app.gemini_service import generate_gemini_response
 
 main = Blueprint("main", __name__)
@@ -19,7 +25,11 @@ def chat():
         return jsonify({"success": False, "error": "Request must be JSON."}), 400
 
     data = request.get_json()
+    conversation_id = data.get("conversation_id") if data else None
     message = data.get("message") if data else None
+
+    if not conversation_id or not conversation_exists(conversation_id):
+        return jsonify({"success": False, "error": "A valid conversation_id is required."}), 400
 
     if not message or not message.strip():
         return jsonify({"success": False, "error": "Message cannot be empty."}), 400
@@ -28,10 +38,46 @@ def chat():
 
     try:
         # Save the user message first, then save Gemini's reply only if it succeeds.
-        save_message("user", user_message)
+        save_message(conversation_id, "user", user_message)
         gemini_response = generate_gemini_response(user_message)
-        save_message("assistant", gemini_response)
+        save_message(conversation_id, "assistant", gemini_response)
 
         return jsonify({"success": True, "response": gemini_response}), 200
     except Exception as error:
         return jsonify({"success": False, "error": str(error)}), 500
+
+
+@main.route("/api/messages", methods=["GET"])
+def messages():
+    """Return saved chat messages as JSON."""
+    conversation_id = request.args.get("conversation_id", type=int)
+
+    if not conversation_id or not conversation_exists(conversation_id):
+        return jsonify({"success": False, "error": "A valid conversation_id is required."}), 400
+
+    try:
+        return jsonify({"success": True, "messages": get_messages(conversation_id)}), 200
+    except Exception:
+        return jsonify({"success": False, "error": "Unable to load messages."}), 500
+
+
+@main.route("/api/conversations/new", methods=["POST"])
+def new_conversation():
+    """Create a new chat conversation."""
+    conversation = create_conversation()
+
+    return jsonify(
+        {
+            "success": True,
+            "conversation": {
+                "id": conversation["id"],
+                "title": conversation["title"],
+            },
+        }
+    ), 200
+
+
+@main.route("/api/conversations", methods=["GET"])
+def conversations():
+    """Return all chat conversations from newest to oldest."""
+    return jsonify({"success": True, "conversations": get_conversations()}), 200
