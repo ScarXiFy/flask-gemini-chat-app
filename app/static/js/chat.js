@@ -29,6 +29,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (sender === "assistant") {
       paragraph.className = "mb-0 markdown-content";
       paragraph.innerHTML = renderMarkdown(text);
+      highlightCodeBlocks(paragraph);
     } else {
       paragraph.textContent = text;
     }
@@ -55,6 +56,20 @@ document.addEventListener("DOMContentLoaded", function () {
     span.textContent = text;
 
     return span.innerHTML;
+  }
+
+  function highlightCodeBlocks(container) {
+    if (!window.hljs) {
+      return;
+    }
+
+    const codeBlocks = container.querySelectorAll("pre code");
+
+    codeBlocks.forEach(function (codeBlock) {
+      if (!codeBlock.dataset.highlighted) {
+        hljs.highlightElement(codeBlock);
+      }
+    });
   }
 
   function removeMessage(message) {
