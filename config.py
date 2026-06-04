@@ -7,6 +7,7 @@ load_dotenv()
 
 
 class Config:
+    DATABASE_PATH = os.path.join(os.path.dirname(__file__), "chat.db")
     FLASK_ENV = os.getenv("FLASK_ENV", "production")
     DEBUG = FLASK_ENV == "development"
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
