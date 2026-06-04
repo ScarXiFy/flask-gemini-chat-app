@@ -34,6 +34,7 @@ body {
   padding: 0.85rem 1rem;
   border-radius: 8px;
   line-height: 1.5;
+  white-space: pre-wrap;
 }
 
 .message-assistant {
@@ -53,6 +54,14 @@ body {
   border: 1px solid #f1b4b4;
   background: #fff1f1;
   color: #8a1f1f;
+}
+
+.message-loading {
+  align-self: flex-start;
+  border: 1px dashed #b8c2d6;
+  background: #ffffff;
+  color: #64748b;
+  font-style: italic;
 }
 
 .chat-form {

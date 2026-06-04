@@ -3,6 +3,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const chatWindow = document.getElementById("chat-window");
   const messageInput = document.getElementById("message");
   const sendButton = document.getElementById("send-button");
+  let isRequestRunning = false;
 
   function addMessage(text, sender) {
     const message = document.createElement("div");
@@ -15,9 +16,19 @@ document.addEventListener("DOMContentLoaded", function () {
     message.appendChild(paragraph);
     chatWindow.appendChild(message);
     chatWindow.scrollTop = chatWindow.scrollHeight;
+
+    return message;
+  }
+
+  function removeMessage(message) {
+    if (message) {
+      message.remove();
+    }
   }
 
   function setLoading(isLoading) {
+    isRequestRunning = isLoading;
+    messageInput.disabled = isLoading;
     sendButton.disabled = isLoading;
     sendButton.textContent = isLoading ? "Sending..." : "Send";
   }
@@ -25,15 +36,21 @@ document.addEventListener("DOMContentLoaded", function () {
   chatForm.addEventListener("submit", async function (event) {
     event.preventDefault();
 
+    if (isRequestRunning) {
+      return;
+    }
+
     const userMessage = messageInput.value.trim();
 
     if (!userMessage) {
+      messageInput.value = "";
       return;
     }
 
     addMessage(userMessage, "user");
     messageInput.value = "";
     setLoading(true);
+    const loadingMessage = addMessage("Gemini is typing...", "loading");
 
     try {
       const response = await fetch("/api/chat", {
@@ -52,8 +69,10 @@ document.addEventListener("DOMContentLoaded", function () {
         throw new Error(data.error || "The chat request failed.");
       }
 
+      removeMessage(loadingMessage);
       addMessage(data.response, "assistant");
     } catch (error) {
+      removeMessage(loadingMessage);
       addMessage("Unable to contact Gemini. Please try again.", "error");
     } finally {
       setLoading(false);
