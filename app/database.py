@@ -133,6 +133,30 @@ def update_conversation_title(conversation_id, title):
         connection.close()
 
 
+def rename_conversation(conversation_id, title):
+    """Rename one conversation."""
+    return update_conversation_title(conversation_id, title)
+
+
+def delete_conversation(conversation_id):
+    """Delete one conversation and all messages that belong to it."""
+    connection = get_database_connection()
+
+    try:
+        # Delete child messages first, then delete the parent conversation.
+        connection.execute(
+            "DELETE FROM messages WHERE conversation_id = ?",
+            (conversation_id,),
+        )
+        connection.execute(
+            "DELETE FROM conversations WHERE id = ?",
+            (conversation_id,),
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+
 def get_messages(conversation_id):
     """Load messages for one conversation from oldest to newest."""
     connection = get_database_connection()

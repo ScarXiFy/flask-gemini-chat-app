@@ -69,20 +69,45 @@ document.addEventListener("DOMContentLoaded", function () {
     conversationList.innerHTML = "";
 
     conversations.forEach(function (conversation) {
-      const button = document.createElement("button");
-      button.className = "conversation-item";
-      button.type = "button";
-      button.textContent = conversation.title;
+      const item = document.createElement("div");
+      item.className = "conversation-item";
 
       if (conversation.id === activeConversationId) {
-        button.classList.add("active");
+        item.classList.add("active");
       }
 
-      button.addEventListener("click", function () {
+      const titleButton = document.createElement("button");
+      titleButton.className = "conversation-title";
+      titleButton.type = "button";
+      titleButton.textContent = conversation.title;
+      titleButton.addEventListener("click", function () {
         switchConversation(conversation.id);
       });
 
-      conversationList.appendChild(button);
+      const actions = document.createElement("div");
+      actions.className = "conversation-actions";
+
+      const renameButton = document.createElement("button");
+      renameButton.className = "conversation-action";
+      renameButton.type = "button";
+      renameButton.textContent = "Rename";
+      renameButton.addEventListener("click", function () {
+        renameConversation(conversation);
+      });
+
+      const deleteButton = document.createElement("button");
+      deleteButton.className = "conversation-action";
+      deleteButton.type = "button";
+      deleteButton.textContent = "Delete";
+      deleteButton.addEventListener("click", function () {
+        deleteConversation(conversation);
+      });
+
+      actions.appendChild(renameButton);
+      actions.appendChild(deleteButton);
+      item.appendChild(titleButton);
+      item.appendChild(actions);
+      conversationList.appendChild(item);
     });
   }
 
@@ -138,6 +163,95 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     return data.conversation;
+  }
+
+  async function renameConversation(conversation) {
+    const newTitle = prompt("Enter new conversation title", conversation.title);
+
+    if (newTitle === null) {
+      return;
+    }
+
+    const cleanTitle = newTitle.trim();
+
+    if (!cleanTitle) {
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/conversations/rename", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          conversation_id: conversation.id,
+          title: cleanTitle,
+        }),
+      });
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Rename failed.");
+      }
+
+      updateConversationInSidebar({
+        id: conversation.id,
+        title: cleanTitle.slice(0, 60),
+      });
+    } catch (error) {
+      addMessage("Unable to rename this conversation.", "error");
+    }
+  }
+
+  async function deleteConversation(conversation) {
+    const shouldDelete = confirm(
+      "Delete this conversation?\nThis action cannot be undone."
+    );
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/conversations/delete", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          conversation_id: conversation.id,
+        }),
+      });
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Delete failed.");
+      }
+
+      conversations = conversations.filter(function (item) {
+        return item.id !== conversation.id;
+      });
+
+      if (conversation.id === activeConversationId) {
+        await chooseConversationAfterDelete();
+      } else {
+        renderConversations();
+      }
+    } catch (error) {
+      addMessage("Unable to delete this conversation.", "error");
+    }
+  }
+
+  async function chooseConversationAfterDelete() {
+    if (!conversations.length) {
+      conversations.push(await createConversation());
+    }
+
+    activeConversationId = conversations[0].id;
+    localStorage.setItem("activeConversationId", activeConversationId);
+    renderConversations();
+    await loadMessagesForActiveConversation();
   }
 
   async function loadMessagesForActiveConversation() {

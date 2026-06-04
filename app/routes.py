@@ -3,9 +3,11 @@ from flask import Blueprint, jsonify, request, render_template
 from app.database import (
     conversation_exists,
     create_conversation,
+    delete_conversation,
     get_conversation,
     get_conversations,
     get_messages,
+    rename_conversation,
     save_message,
     update_conversation_title,
 )
@@ -95,6 +97,45 @@ def new_conversation():
 def conversations():
     """Return all chat conversations from newest to oldest."""
     return jsonify({"success": True, "conversations": get_conversations()}), 200
+
+
+@main.route("/api/conversations/rename", methods=["POST"])
+def rename_conversation_route():
+    """Rename an existing conversation."""
+    if not request.is_json:
+        return jsonify({"success": False, "error": "Request must be JSON."}), 400
+
+    data = request.get_json()
+    conversation_id = data.get("conversation_id") if data else None
+    title = data.get("title") if data else None
+
+    if not conversation_id or not conversation_exists(conversation_id):
+        return jsonify({"success": False, "error": "A valid conversation_id is required."}), 400
+
+    if not title or not title.strip():
+        return jsonify({"success": False, "error": "Title cannot be empty."}), 400
+
+    clean_title = title.strip()[:60]
+    rename_conversation(conversation_id, clean_title)
+
+    return jsonify({"success": True}), 200
+
+
+@main.route("/api/conversations/delete", methods=["POST"])
+def delete_conversation_route():
+    """Delete a conversation and its messages."""
+    if not request.is_json:
+        return jsonify({"success": False, "error": "Request must be JSON."}), 400
+
+    data = request.get_json()
+    conversation_id = data.get("conversation_id") if data else None
+
+    if not conversation_id or not conversation_exists(conversation_id):
+        return jsonify({"success": False, "error": "A valid conversation_id is required."}), 400
+
+    delete_conversation(conversation_id)
+
+    return jsonify({"success": True}), 200
 
 
 def _auto_title_conversation(conversation, user_message):
