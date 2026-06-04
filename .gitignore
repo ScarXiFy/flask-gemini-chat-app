@@ -1,6 +1,7 @@
 __pycache__/
 *.py[cod]
 .env
+chat.db
 .venv/
 venv/
 instance/
