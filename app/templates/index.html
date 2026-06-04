@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Home | Flask Gemini Chat{% endblock %}
+
+{% block content %}
+<section class="chat-page">
+  <div class="container py-5">
+    <div class="row justify-content-center">
+      <div class="col-12 col-lg-8 col-xl-7">
+        <div class="chat-card shadow-sm">
+          <div class="chat-header">
+            <div>
+              <h1 class="h4 mb-1">Flask Gemini Chat</h1>
+              <p class="mb-0 text-secondary">Phase 1 starter UI</p>
+            </div>
+          </div>
+
+          <div class="chat-window" aria-label="Chat messages">
+            <div class="message message-assistant">
+              <p class="mb-0">
+                Hi, I am your starter chat UI. Gemini will be connected in a later phase.
+              </p>
+            </div>
+            <div class="message message-user">
+              <p class="mb-0">Sounds good. Let us build this one phase at a time.</p>
+            </div>
+          </div>
+
+          <form class="chat-form" aria-label="Chat form">
+            <label class="visually-hidden" for="message">Message</label>
+            <input
+              class="form-control"
+              id="message"
+              name="message"
+              type="text"
+              placeholder="Type a message..."
+              autocomplete="off"
+              disabled
+            >
+            <button class="btn btn-primary" type="button" disabled>Send</button>
+          </form>
+          <p class="chat-note mb-0">
+            Input is disabled for now because the Gemini API is not implemented in Phase 1.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
