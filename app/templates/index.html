@@ -15,7 +15,7 @@
             </div>
           </div>
 
-          <div class="chat-window" aria-label="Chat messages">
+          <div class="chat-window" id="chat-window" aria-label="Chat messages">
             <div class="message message-assistant">
               <p class="mb-0">
                 Hi, I am your starter chat UI. Gemini will be connected in a later phase.
@@ -26,7 +26,7 @@
             </div>
           </div>
 
-          <form class="chat-form" aria-label="Chat form">
+          <form class="chat-form" id="chat-form" aria-label="Chat form">
             <label class="visually-hidden" for="message">Message</label>
             <input
               class="form-control"
@@ -35,12 +35,11 @@
               type="text"
               placeholder="Type a message..."
               autocomplete="off"
-              disabled
             >
-            <button class="btn btn-primary" type="button" disabled>Send</button>
+            <button class="btn btn-primary" id="send-button" type="submit">Send</button>
           </form>
           <p class="chat-note mb-0">
-            Input is disabled for now because the Gemini API is not implemented in Phase 1.
+            Messages are sent to the Flask backend, then answered by Gemini.
           </p>
         </div>
       </div>
