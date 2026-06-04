@@ -17,7 +17,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  function addMessage(text, sender) {
+  function addMessage(text, sender, createdAt) {
     removeEmptyState();
 
     const message = document.createElement("div");
@@ -35,10 +35,49 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     message.appendChild(paragraph);
+
+    const timestamp = formatTimestamp(createdAt);
+
+    if (timestamp) {
+      const timestampElement = document.createElement("div");
+      timestampElement.className = "message-timestamp";
+      timestampElement.textContent = timestamp;
+      message.appendChild(timestampElement);
+    }
+
     chatWindow.appendChild(message);
     scrollToNewestMessage();
 
     return message;
+  }
+
+  function formatTimestamp(createdAt) {
+    if (!createdAt) {
+      return "";
+    }
+
+    const date = new Date(createdAt);
+
+    if (Number.isNaN(date.getTime())) {
+      return "";
+    }
+
+    const now = new Date();
+    const sameDay = date.toDateString() === now.toDateString();
+
+    if (sameDay) {
+      return date.toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit",
+      });
+    }
+
+    return date.toLocaleString([], {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
   }
 
   function renderMarkdown(text) {
@@ -180,7 +219,7 @@ document.addEventListener("DOMContentLoaded", function () {
     clearMessages();
 
     messages.forEach(function (message) {
-      addMessage(message.content, message.role);
+      addMessage(message.content, message.role, message.created_at);
     });
 
     scrollToNewestMessage();
@@ -396,7 +435,9 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
-    addMessage(userMessage, "user");
+    const sentAt = new Date().toISOString();
+
+    addMessage(userMessage, "user", sentAt);
     messageInput.value = "";
     setLoading(true);
     const loadingMessage = addMessage("Gemini is typing...", "loading");
@@ -420,7 +461,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       removeMessage(loadingMessage);
-      addMessage(data.response, "assistant");
+      addMessage(data.response, "assistant", new Date().toISOString());
       updateConversationInSidebar(data.conversation);
       await fetchConversations();
       renderConversations();
