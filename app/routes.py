@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request, render_template
 
+from app.database import save_message
 from app.gemini_service import generate_gemini_response
 
 main = Blueprint("main", __name__)
@@ -23,8 +24,14 @@ def chat():
     if not message or not message.strip():
         return jsonify({"success": False, "error": "Message cannot be empty."}), 400
 
+    user_message = message.strip()
+
     try:
-        gemini_response = generate_gemini_response(message)
+        # Save the user message first, then save Gemini's reply only if it succeeds.
+        save_message("user", user_message)
+        gemini_response = generate_gemini_response(user_message)
+        save_message("assistant", gemini_response)
+
         return jsonify({"success": True, "response": gemini_response}), 200
     except Exception as error:
         return jsonify({"success": False, "error": str(error)}), 500
