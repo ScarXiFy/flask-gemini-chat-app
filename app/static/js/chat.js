@@ -10,6 +10,13 @@ document.addEventListener("DOMContentLoaded", function () {
   let conversations = [];
   let isRequestRunning = false;
 
+  if (window.marked) {
+    marked.use({
+      gfm: true,
+      breaks: true,
+    });
+  }
+
   function addMessage(text, sender) {
     removeEmptyState();
 
@@ -18,13 +25,36 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const paragraph = document.createElement("p");
     paragraph.className = "mb-0";
-    paragraph.textContent = text;
+
+    if (sender === "assistant") {
+      paragraph.className = "mb-0 markdown-content";
+      paragraph.innerHTML = renderMarkdown(text);
+    } else {
+      paragraph.textContent = text;
+    }
 
     message.appendChild(paragraph);
     chatWindow.appendChild(message);
     scrollToNewestMessage();
 
     return message;
+  }
+
+  function renderMarkdown(text) {
+    if (!window.marked || !window.DOMPurify) {
+      return escapeHtml(text);
+    }
+
+    const rawHtml = marked.parse(text);
+
+    return DOMPurify.sanitize(rawHtml);
+  }
+
+  function escapeHtml(text) {
+    const span = document.createElement("span");
+    span.textContent = text;
+
+    return span.innerHTML;
   }
 
   function removeMessage(message) {
